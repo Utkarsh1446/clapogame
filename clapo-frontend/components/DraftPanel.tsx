@@ -118,7 +118,7 @@ export function DraftPanel({ onMatchCreated }: DraftPanelProps) {
       // Wait a moment for the transaction to be mined
       setTimeout(() => {
         // The matchId will be fetched by the parent component via usePlayerActiveMatch
-        onMatchCreated(0n); // Signal that match was created, parent will fetch real ID
+        onMatchCreated(BigInt(0)); // Signal that match was created, parent will fetch real ID
       }, 2000);
     } catch (error) {
       console.error("Error creating match:", error);

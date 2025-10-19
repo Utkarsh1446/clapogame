@@ -18,7 +18,7 @@ export default function Home() {
   const { matchId: activeMatchId } = usePlayerActiveMatch(address);
 
   // Use on-chain match ID if available, otherwise use local
-  const currentMatchId = activeMatchId !== undefined && activeMatchId > 0n
+  const currentMatchId = activeMatchId !== undefined && activeMatchId > BigInt(0)
     ? activeMatchId
     : localMatchId;
 
@@ -96,7 +96,7 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {currentMatchId === null || currentMatchId === 0n ? (
+        {currentMatchId === null || currentMatchId === BigInt(0) ? (
           <DraftPanel onMatchCreated={handleMatchCreated} />
         ) : (
           <MatchRoom matchId={currentMatchId} onMatchEnd={handleMatchEnd} />
