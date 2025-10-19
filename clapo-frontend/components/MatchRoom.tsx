@@ -9,7 +9,7 @@ interface MatchRoomProps {
 }
 
 export function MatchRoom({ onMatchEnd }: MatchRoomProps) {
-  const [timeRemaining, setTimeRemaining] = useState(GAME_CONFIG.MATCH_DURATION);
+  const [timeRemaining, setTimeRemaining] = useState<number>(GAME_CONFIG.MATCH_DURATION);
   const [matchStarted, setMatchStarted] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
