@@ -12,7 +12,7 @@ interface SelectedAsset {
 }
 
 interface DraftPanelProps {
-  onMatchCreated: () => void;
+  onMatchCreated: (matchId: bigint) => void;
 }
 
 export function DraftPanel({ onMatchCreated }: DraftPanelProps) {
@@ -110,7 +110,16 @@ export function DraftPanel({ onMatchCreated }: DraftPanelProps) {
       localStorage.setItem("clapo-assets", JSON.stringify(assets));
       localStorage.setItem("clapo-roles", JSON.stringify(roles));
 
-      onMatchCreated();
+      // Get the match ID - for now we'll need to query the contract
+      // The matchId is emitted in the MatchCreated event
+      // For simplicity, we'll use the player's active match
+      // In a real app, we'd parse the transaction receipt for the event
+
+      // Wait a moment for the transaction to be mined
+      setTimeout(() => {
+        // The matchId will be fetched by the parent component via usePlayerActiveMatch
+        onMatchCreated(0n); // Signal that match was created, parent will fetch real ID
+      }, 2000);
     } catch (error) {
       console.error("Error creating match:", error);
       alert("Failed to create match. Check console for details.");

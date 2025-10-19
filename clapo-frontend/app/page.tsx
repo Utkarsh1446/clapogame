@@ -3,13 +3,47 @@
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { DraftPanel } from "@/components/DraftPanel";
 import { MatchRoom } from "@/components/MatchRoom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePlayerActiveMatch } from "@/hooks/useMatchmaker";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const [hasMatch, setHasMatch] = useState(false);
+
+  // Track if user has created/joined a match
+  const [localMatchId, setLocalMatchId] = useState<bigint | null>(null);
+
+  // Check if player has an active match on-chain
+  const { matchId: activeMatchId } = usePlayerActiveMatch(address);
+
+  // Use on-chain match ID if available, otherwise use local
+  const currentMatchId = activeMatchId !== undefined && activeMatchId > 0n
+    ? activeMatchId
+    : localMatchId;
+
+  // Load match ID from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedMatchId = localStorage.getItem("clapo-matchId");
+      if (savedMatchId) {
+        setLocalMatchId(BigInt(savedMatchId));
+      }
+    }
+  }, []);
+
+  const handleMatchCreated = (matchId: bigint) => {
+    setLocalMatchId(matchId);
+    localStorage.setItem("clapo-matchId", matchId.toString());
+  };
+
+  const handleMatchEnd = () => {
+    setLocalMatchId(null);
+    localStorage.removeItem("clapo-matchId");
+    localStorage.removeItem("clapo-salt");
+    localStorage.removeItem("clapo-assets");
+    localStorage.removeItem("clapo-roles");
+  };
 
   if (!isConnected) {
     return (
@@ -62,10 +96,10 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {!hasMatch ? (
-          <DraftPanel onMatchCreated={() => setHasMatch(true)} />
+        {currentMatchId === null || currentMatchId === 0n ? (
+          <DraftPanel onMatchCreated={handleMatchCreated} />
         ) : (
-          <MatchRoom onMatchEnd={() => setHasMatch(false)} />
+          <MatchRoom matchId={currentMatchId} onMatchEnd={handleMatchEnd} />
         )}
       </main>
     </div>

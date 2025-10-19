@@ -1,24 +1,46 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { GAME_CONFIG } from "@/lib/constants";
+import { useAccount } from "wagmi";
+import { GAME_CONFIG, MatchState, ASSETS } from "@/lib/constants";
+import { useMatch, useMatchmaker } from "@/hooks/useMatchmaker";
 import { ResultsModal } from "./ResultsModal";
 
 interface MatchRoomProps {
+  matchId: bigint;
   onMatchEnd: () => void;
 }
 
-export function MatchRoom({ onMatchEnd }: MatchRoomProps) {
+export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
+  const { address } = useAccount();
+  const { match, isLoading } = useMatch(matchId);
+  const { startMatch, revealAndSettle, isPending } = useMatchmaker();
+
   const [timeRemaining, setTimeRemaining] = useState<number>(GAME_CONFIG.MATCH_DURATION);
-  const [matchStarted, setMatchStarted] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [revealing, setRevealing] = useState(false);
 
-  // Mock data for demonstration
-  const [player1Score, setPlayer1Score] = useState(0);
-  const [player2Score, setPlayer2Score] = useState(0);
+  // Parse match data
+  const matchState = match ? Number((match as any)[0]) : MatchState.Created;
+  const player1 = match ? (match as any)[1] : null;
+  const player2 = match ? (match as any)[2] : null;
+  const hasPlayer2 = player2 && player2 !== "0x0000000000000000000000000000000000000000";
+  const isPlayer1 = address?.toLowerCase() === player1?.toLowerCase();
 
+  // Get saved portfolio from localStorage
+  const savedAssets = typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("clapo-assets") || "[]")
+    : [];
+  const savedRoles = typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("clapo-roles") || "[]")
+    : [];
+  const savedSalt = typeof window !== "undefined"
+    ? localStorage.getItem("clapo-salt") || ""
+    : "";
+
+  // Timer for started matches
   useEffect(() => {
-    if (!matchStarted) return;
+    if (matchState !== MatchState.Started) return;
 
     const interval = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -29,21 +51,43 @@ export function MatchRoom({ onMatchEnd }: MatchRoomProps) {
         }
         return prev - 1;
       });
-
-      // Simulate score changes
-      setPlayer1Score((prev) => prev + Math.random() * 20 - 10);
-      setPlayer2Score((prev) => prev + Math.random() * 20 - 10);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [matchStarted]);
+  }, [matchState]);
 
-  const handleMatchEnd = () => {
-    setShowResults(true);
+  const handleStartMatch = async () => {
+    if (!hasPlayer2) {
+      alert("Waiting for opponent to join!");
+      return;
+    }
+
+    try {
+      await startMatch(matchId);
+    } catch (error) {
+      console.error("Error starting match:", error);
+      alert("Failed to start match. Check console for details.");
+    }
   };
 
-  const handleStartMatch = () => {
-    setMatchStarted(true);
+  const handleMatchEnd = async () => {
+    setRevealing(true);
+    try {
+      // Reveal and settle
+      await revealAndSettle(
+        matchId,
+        savedAssets,
+        savedRoles,
+        savedSalt
+      );
+
+      setShowResults(true);
+    } catch (error) {
+      console.error("Error revealing:", error);
+      alert("Failed to reveal picks. Check console for details.");
+    } finally {
+      setRevealing(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -52,11 +96,19 @@ export function MatchRoom({ onMatchEnd }: MatchRoomProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto text-center">
+        <div className="text-4xl font-bold text-white mb-4">Loading Match...</div>
+      </div>
+    );
+  }
+
   if (showResults) {
     return (
       <ResultsModal
-        player1Score={player1Score}
-        player2Score={player2Score}
+        player1Score={0} // TODO: Get from contract after settlement
+        player2Score={0}
         onClose={() => {
           setShowResults(false);
           onMatchEnd();
@@ -70,11 +122,20 @@ export function MatchRoom({ onMatchEnd }: MatchRoomProps) {
       {/* Match Status */}
       <div className="text-center mb-8">
         <h2 className="text-4xl font-bold text-white mb-4">
-          {matchStarted ? "Battle In Progress" : "Waiting for Opponent"}
+          {matchState === MatchState.Created && "Waiting for Opponent"}
+          {matchState === MatchState.Committed && "Ready to Start"}
+          {matchState === MatchState.Started && "Battle In Progress"}
+          {matchState === MatchState.Ended && "Match Ended - Revealing..."}
+          {matchState === MatchState.Settled && "Match Complete"}
         </h2>
 
+        {/* Match ID */}
+        <div className="text-gray-400 mb-4">
+          Match #{matchId.toString()}
+        </div>
+
         {/* Timer */}
-        {matchStarted && (
+        {matchState === MatchState.Started && (
           <div className="inline-block bg-gray-800 rounded-lg px-8 py-4 mb-4">
             <div className="text-6xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">
               {formatTime(timeRemaining)}
@@ -84,97 +145,137 @@ export function MatchRoom({ onMatchEnd }: MatchRoomProps) {
         )}
       </div>
 
-      {/* Score Display */}
+      {/* Player Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Player 1 */}
-        <div className="bg-gray-800 rounded-lg p-6 border-2 border-purple-500">
+        <div className={`bg-gray-800 rounded-lg p-6 border-2 ${
+          isPlayer1 ? "border-purple-500" : "border-gray-700"
+        }`}>
           <div className="text-center">
-            <div className="text-sm text-gray-400 mb-2">YOU</div>
-            <div className="text-3xl font-bold text-white mb-4">Player 1</div>
-            <div className={`text-5xl font-bold ${
-              player1Score >= 0 ? "text-green-400" : "text-red-400"
-            }`}>
-              {player1Score >= 0 ? "+" : ""}{player1Score.toFixed(2)}
+            <div className="text-sm text-gray-400 mb-2">
+              {isPlayer1 ? "YOU" : "OPPONENT"}
             </div>
-            <div className="text-gray-400 mt-2">Score</div>
+            <div className="text-2xl font-bold text-white mb-4">Player 1</div>
+            <div className="text-sm text-gray-500 font-mono">
+              {player1?.slice(0, 6)}...{player1?.slice(-4)}
+            </div>
+            <div className="mt-4 text-green-400 font-bold">
+              ✓ Portfolio Committed
+            </div>
           </div>
 
-          {/* Mock portfolio */}
-          <div className="mt-6 space-y-2">
-            <div className="text-sm text-gray-400 mb-3">Your Portfolio</div>
-            {["BTC", "ETH", "SOL", "BNB", "AVAX", "ADA", "DOGE"].map((symbol, i) => (
-              <div key={symbol} className="flex justify-between items-center bg-gray-700 p-2 rounded">
-                <span className="font-bold text-white">
-                  {symbol}
-                  {i === 0 && <span className="ml-2 text-xs text-yellow-400">★ Leader</span>}
-                  {i === 1 && <span className="ml-2 text-xs text-blue-400">Co-Lead</span>}
-                </span>
-                <span className={Math.random() > 0.5 ? "text-green-400" : "text-red-400"}>
-                  {Math.random() > 0.5 ? "+" : ""}{(Math.random() * 10 - 5).toFixed(2)}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Player 2 */}
-        <div className="bg-gray-800 rounded-lg p-6 border-2 border-pink-500">
-          <div className="text-center">
-            <div className="text-sm text-gray-400 mb-2">OPPONENT</div>
-            <div className="text-3xl font-bold text-white mb-4">Player 2</div>
-            <div className={`text-5xl font-bold ${
-              player2Score >= 0 ? "text-green-400" : "text-red-400"
-            }`}>
-              {player2Score >= 0 ? "+" : ""}{player2Score.toFixed(2)}
-            </div>
-            <div className="text-gray-400 mt-2">Score</div>
-          </div>
-
-          {/* Mock portfolio (hidden until reveal) */}
-          <div className="mt-6 space-y-2">
-            <div className="text-sm text-gray-400 mb-3">
-              {matchStarted && timeRemaining > 0 ? "Picks Hidden" : "Opponent Portfolio"}
-            </div>
-            {matchStarted && timeRemaining > 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                Picks will be revealed after the match
-              </div>
-            ) : (
-              ["ETH", "BTC", "XRP", "MATIC", "NEAR", "TRX", "SHIB"].map((symbol, i) => (
+          {/* Show portfolio if you're player 1 */}
+          {isPlayer1 && savedAssets.length > 0 && (
+            <div className="mt-6 space-y-2">
+              <div className="text-sm text-gray-400 mb-3">Your Portfolio</div>
+              {savedAssets.map((symbol: string, i: number) => (
                 <div key={symbol} className="flex justify-between items-center bg-gray-700 p-2 rounded">
                   <span className="font-bold text-white">
                     {symbol}
-                    {i === 0 && <span className="ml-2 text-xs text-yellow-400">★ Leader</span>}
-                    {i === 1 && <span className="ml-2 text-xs text-blue-400">Co-Lead</span>}
+                    {savedRoles[i] === 2 && <span className="ml-2 text-xs text-yellow-400">★ Leader (2×)</span>}
+                    {savedRoles[i] === 1 && <span className="ml-2 text-xs text-blue-400">Co-Lead (1.5×)</span>}
                   </span>
-                  <span className={Math.random() > 0.5 ? "text-green-400" : "text-red-400"}>
-                    {Math.random() > 0.5 ? "+" : ""}{(Math.random() * 10 - 5).toFixed(2)}%
+                  <span className="text-gray-400 text-sm">
+                    {ASSETS[symbol as keyof typeof ASSETS]?.cost || 0} pts
                   </span>
                 </div>
-              ))
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Player 2 */}
+        <div className={`bg-gray-800 rounded-lg p-6 border-2 ${
+          !isPlayer1 ? "border-pink-500" : "border-gray-700"
+        }`}>
+          <div className="text-center">
+            <div className="text-sm text-gray-400 mb-2">
+              {!isPlayer1 ? "YOU" : "OPPONENT"}
+            </div>
+            <div className="text-2xl font-bold text-white mb-4">Player 2</div>
+            {hasPlayer2 ? (
+              <>
+                <div className="text-sm text-gray-500 font-mono">
+                  {player2?.slice(0, 6)}...{player2?.slice(-4)}
+                </div>
+                <div className="mt-4 text-green-400 font-bold">
+                  ✓ Portfolio Committed
+                </div>
+              </>
+            ) : (
+              <div className="mt-4 text-yellow-400 font-bold">
+                Waiting to Join...
+              </div>
             )}
           </div>
+
+          {/* Hidden portfolio */}
+          {hasPlayer2 && (
+            <div className="mt-6 space-y-2">
+              <div className="text-sm text-gray-400 mb-3">
+                {matchState < MatchState.Ended ? "Picks Hidden" : "Opponent Portfolio"}
+              </div>
+              {matchState < MatchState.Ended ? (
+                <div className="text-center py-8 text-gray-500">
+                  Picks will be revealed after the match
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-400">
+                  Revealing...
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Start Button */}
-      {!matchStarted && (
-        <div className="text-center">
-          <button
-            onClick={handleStartMatch}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-12 py-4 rounded-lg text-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
-          >
-            Start Match
-          </button>
-          <p className="text-gray-400 mt-4 text-sm">
-            Both players must reveal their picks to start
-          </p>
-        </div>
-      )}
+      {/* Action Buttons */}
+      <div className="text-center">
+        {matchState === MatchState.Created && !hasPlayer2 && (
+          <div>
+            <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 mb-4 inline-block">
+              <p className="text-yellow-400 font-bold">Waiting for opponent to join...</p>
+              <p className="text-yellow-300 text-sm mt-2">
+                Share Match ID #{matchId.toString()} with your opponent
+              </p>
+            </div>
+          </div>
+        )}
+
+        {matchState === MatchState.Committed && hasPlayer2 && (
+          <div>
+            <button
+              onClick={handleStartMatch}
+              disabled={isPending}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-12 py-4 rounded-lg text-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isPending ? "Starting..." : "Start Match"}
+            </button>
+            <p className="text-gray-400 mt-4 text-sm">
+              Both players have committed - ready to battle!
+            </p>
+          </div>
+        )}
+
+        {matchState === MatchState.Ended && (
+          <div>
+            <button
+              onClick={handleMatchEnd}
+              disabled={revealing || isPending}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-12 py-4 rounded-lg text-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {revealing || isPending ? "Revealing..." : "Reveal & Settle"}
+            </button>
+            <p className="text-gray-400 mt-4 text-sm">
+              Match ended - reveal your picks to settle
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Match Info */}
       <div className="mt-8 text-center text-gray-400 text-sm">
-        <p>Match ID: #12345 • Duration: {GAME_CONFIG.MATCH_DURATION}s</p>
+        <p>Duration: {GAME_CONFIG.MATCH_DURATION}s • Network: Monad Testnet</p>
       </div>
     </div>
   );
