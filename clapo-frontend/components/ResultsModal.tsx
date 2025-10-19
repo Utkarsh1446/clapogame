@@ -17,7 +17,7 @@ export function ResultsModal({ player1Score, player2Score, onClose }: ResultsMod
         <div className="text-center mb-8">
           {isTie ? (
             <>
-              <h2 className="text-5xl font-bold text-yellow-400 mb-2">It's a Tie!</h2>
+              <h2 className="text-5xl font-bold text-yellow-400 mb-2">It&apos;s a Tie!</h2>
               <p className="text-gray-400">Both NFTs returned</p>
             </>
           ) : (
