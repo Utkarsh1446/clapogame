@@ -22,7 +22,7 @@ export function useClapoNFT() {
       abi: ClapoNFTABI.abi,
       functionName: "approve",
       args: [CONTRACT_ADDRESSES.NFTVault, tokenId],
-      gas: BigInt(5000000), // Manually set higher gas limit for Monad
+      gas: BigInt(10000000), // Increased gas limit for Monad
     });
   };
 

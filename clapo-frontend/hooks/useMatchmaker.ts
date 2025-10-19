@@ -41,7 +41,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "createMatch",
       args: [nftContract, nftTokenId, commitHash],
-      gas: BigInt(5000000), // Manually set higher gas limit for Monad
+      gas: BigInt(10000000), // Increased gas limit for Monad
     });
   };
 
@@ -61,7 +61,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "joinMatch",
       args: [matchId, nftContract, nftTokenId, commitHash],
-      gas: BigInt(5000000), // Manually set higher gas limit for Monad
+      gas: BigInt(10000000), // Increased gas limit for Monad
     });
   };
 
@@ -72,7 +72,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "startMatch",
       args: [matchId],
-      gas: BigInt(5000000), // Manually set higher gas limit for Monad
+      gas: BigInt(10000000), // Increased gas limit for Monad
     });
   };
 
@@ -93,7 +93,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "revealAndSettle",
       args: [matchId, assetBytes, roles, keccak256(encodePacked(["string"], [salt]))],
-      gas: BigInt(10000000), // Higher gas for price oracle calls and settlement
+      gas: BigInt(20000000), // Very high gas for price oracle calls and settlement
     });
   };
 
@@ -104,7 +104,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "cancelMatch",
       args: [matchId],
-      gas: BigInt(5000000), // Manually set higher gas limit for Monad
+      gas: BigInt(10000000), // Increased gas limit for Monad
     });
   };
 
