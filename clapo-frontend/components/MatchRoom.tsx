@@ -36,11 +36,13 @@ interface MatchData {
 export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
   const { address } = useAccount();
   const { match, isLoading } = useMatch(matchId);
-  const { startMatch, revealAndSettle, isPending } = useMatchmaker();
+  const { startMatch, revealAndSettle, cancelMatch, isPending } = useMatchmaker();
 
   const [timeRemaining, setTimeRemaining] = useState<number>(GAME_CONFIG.MATCH_DURATION);
   const [showResults, setShowResults] = useState(false);
   const [revealing, setRevealing] = useState(false);
+  const [waitingTime, setWaitingTime] = useState<number>(0);
+  const [cancelling, setCancelling] = useState(false);
 
   // Parse match data with proper types
   const matchData = match as unknown as MatchData | undefined;
@@ -99,6 +101,20 @@ export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
     return () => clearInterval(interval);
   }, [matchState, handleMatchEnd]);
 
+  // Waiting timer for matches without opponent
+  useEffect(() => {
+    if (matchState !== MatchState.Created || hasPlayer2) return;
+
+    const interval = setInterval(() => {
+      setWaitingTime((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      setWaitingTime(0);
+    };
+  }, [matchState, hasPlayer2]);
+
   const handleStartMatch = async () => {
     if (!hasPlayer2) {
       alert("Waiting for opponent to join!");
@@ -110,6 +126,27 @@ export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
     } catch (error) {
       console.error("Error starting match:", error);
       alert("Failed to start match. Check console for details.");
+    }
+  };
+
+  const handleCancelMatch = async () => {
+    if (!confirm("Are you sure you want to cancel this match? Your NFT will be returned.")) {
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      await cancelMatch(matchId);
+
+      // Clear local storage and go back to menu
+      setTimeout(() => {
+        onMatchEnd();
+      }, 2000);
+    } catch (error) {
+      console.error("Error cancelling match:", error);
+      alert("Failed to cancel match. Check console for details.");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -256,10 +293,27 @@ export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
       <div className="text-center">
         {matchState === MatchState.Created && !hasPlayer2 && (
           <div>
-            <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 mb-4 inline-block">
-              <p className="text-yellow-400 font-bold">Waiting for opponent to join...</p>
-              <p className="text-yellow-300 text-sm mt-2">
+            <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 mb-4 inline-block max-w-md">
+              <p className="text-yellow-400 font-bold mb-2">Waiting for opponent to join...</p>
+              <p className="text-yellow-300 text-sm mb-3">
                 Share Match ID #{matchId.toString()} with your opponent
+              </p>
+              <div className="text-gray-400 text-sm">
+                Waiting time: {Math.floor(waitingTime / 60)}:{(waitingTime % 60).toString().padStart(2, "0")}
+              </div>
+            </div>
+
+            {/* Cancel Button */}
+            <div className="mt-4">
+              <button
+                onClick={handleCancelMatch}
+                disabled={cancelling}
+                className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {cancelling ? "Cancelling..." : "Cancel Match & Return NFT"}
+              </button>
+              <p className="text-gray-500 text-xs mt-2">
+                Your NFT will be returned to you
               </p>
             </div>
           </div>
