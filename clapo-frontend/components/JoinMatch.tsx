@@ -11,20 +11,21 @@ interface SelectedAsset {
   role: Role;
 }
 
-interface DraftPanelProps {
-  onMatchCreated: (matchId: bigint) => void;
-  onBack?: () => void;
+interface JoinMatchProps {
+  onMatchJoined: (matchId: bigint) => void;
+  onBack: () => void;
 }
 
-export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
+export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
   const { address } = useAccount();
-  const { createMatch, isPending } = useMatchmaker();
+  const { joinMatch, isPending } = useMatchmaker();
   const { approve, isPending: isApproving } = useClapoNFT();
 
+  const [matchIdInput, setMatchIdInput] = useState<string>("");
   const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
   const [leaderIndex, setLeaderIndex] = useState<number | null>(null);
   const [coLeaderIndex, setCoLeaderIndex] = useState<number | null>(null);
-  const [nftTokenId, setNftTokenId] = useState<string>("0"); // User inputs their NFT ID
+  const [nftTokenId, setNftTokenId] = useState<string>("0");
 
   const usedBudget = selectedAssets.reduce(
     (sum, { symbol }) => sum + ASSETS[symbol].cost,
@@ -75,15 +76,18 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
     }
   };
 
-  const canCreateMatch =
+  const canJoinMatch =
+    matchIdInput.trim() !== "" &&
     selectedAssets.length === GAME_CONFIG.REQUIRED_ASSETS &&
     leaderIndex !== null &&
     coLeaderIndex !== null;
 
-  const handleCreateMatch = async () => {
-    if (!canCreateMatch || !address) return;
+  const handleJoinMatch = async () => {
+    if (!canJoinMatch || !address) return;
 
     try {
+      const matchId = BigInt(matchIdInput);
+
       // Build roles array
       const roles = selectedAssets.map((_, index) =>
         index === leaderIndex ? Role.Leader :
@@ -97,8 +101,9 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
       // First approve NFT
       await approve(BigInt(nftTokenId));
 
-      // Then create match
-      await createMatch(
+      // Then join match
+      await joinMatch(
+        matchId,
         CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
         BigInt(nftTokenId),
         assets,
@@ -106,42 +111,47 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
         salt
       );
 
-      // Store salt for later reveal (in production, use secure storage)
+      // Store salt for later reveal
       localStorage.setItem("clapo-salt", salt);
       localStorage.setItem("clapo-assets", JSON.stringify(assets));
       localStorage.setItem("clapo-roles", JSON.stringify(roles));
 
-      // Get the match ID - for now we'll need to query the contract
-      // The matchId is emitted in the MatchCreated event
-      // For simplicity, we'll use the player's active match
-      // In a real app, we'd parse the transaction receipt for the event
-
-      // Wait a moment for the transaction to be mined
+      // Wait a moment for transaction to confirm
       setTimeout(() => {
-        // The matchId will be fetched by the parent component via usePlayerActiveMatch
-        onMatchCreated(BigInt(0)); // Signal that match was created, parent will fetch real ID
+        onMatchJoined(matchId);
       }, 2000);
     } catch (error) {
-      console.error("Error creating match:", error);
-      alert("Failed to create match. Check console for details.");
+      console.error("Error joining match:", error);
+      alert("Failed to join match. Check console for details.");
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Header */}
       <div className="text-center mb-8">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="mb-4 text-gray-400 hover:text-white transition-colors"
-          >
-            ← Back to Menu
-          </button>
-        )}
-        <h2 className="text-4xl font-bold text-white mb-2">Build Your Portfolio</h2>
+        <button
+          onClick={onBack}
+          className="mb-4 text-gray-400 hover:text-white transition-colors"
+        >
+          ← Back to Menu
+        </button>
+        <h2 className="text-4xl font-bold text-white mb-2">Join a Match</h2>
         <p className="text-gray-400">
-          Select {GAME_CONFIG.REQUIRED_ASSETS} tokens • Budget: {GAME_CONFIG.MAX_BUDGET} points
+          Enter Match ID and build your portfolio
         </p>
+      </div>
+
+      {/* Match ID Input */}
+      <div className="mb-8 bg-gray-800 rounded-lg p-6">
+        <label className="block text-sm text-gray-400 mb-2">Match ID</label>
+        <input
+          type="text"
+          value={matchIdInput}
+          onChange={(e) => setMatchIdInput(e.target.value)}
+          placeholder="Enter match ID (e.g., 1)"
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-lg"
+        />
       </div>
 
       {/* Budget Bar */}
@@ -252,7 +262,7 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
         </div>
       )}
 
-      {/* NFT Input and Create Match Button */}
+      {/* NFT Input and Join Button */}
       <div className="text-center space-y-4">
         {selectedAssets.length === GAME_CONFIG.REQUIRED_ASSETS && (
           <div className="inline-block">
@@ -269,23 +279,25 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
 
         <div>
           <button
-            onClick={handleCreateMatch}
-            disabled={!canCreateMatch || isPending || isApproving}
+            onClick={handleJoinMatch}
+            disabled={!canJoinMatch || isPending || isApproving}
             className={`px-8 py-4 rounded-lg text-lg font-bold transition-all ${
-              canCreateMatch && !isPending && !isApproving
+              canJoinMatch && !isPending && !isApproving
                 ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transform hover:scale-105"
                 : "bg-gray-700 text-gray-500 cursor-not-allowed"
             }`}
           >
             {isPending || isApproving
-              ? "Creating Match..."
+              ? "Joining Match..."
+              : !matchIdInput.trim()
+              ? "Enter Match ID"
               : selectedAssets.length < GAME_CONFIG.REQUIRED_ASSETS
               ? `Select ${GAME_CONFIG.REQUIRED_ASSETS - selectedAssets.length} More`
               : leaderIndex === null
               ? "Choose a Leader"
               : coLeaderIndex === null
               ? "Choose a Co-Leader"
-              : "Create Match"}
+              : "Join Match"}
           </button>
         </div>
       </div>

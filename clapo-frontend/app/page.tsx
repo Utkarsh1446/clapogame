@@ -2,16 +2,19 @@
 
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { DraftPanel } from "@/components/DraftPanel";
+import { JoinMatch } from "@/components/JoinMatch";
 import { MatchRoom } from "@/components/MatchRoom";
 import { useState, useEffect } from "react";
 import { usePlayerActiveMatch } from "@/hooks/useMatchmaker";
+
+type GameMode = "menu" | "create" | "join" | "match";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
-  // Track if user has created/joined a match
+  const [gameMode, setGameMode] = useState<GameMode>("menu");
   const [localMatchId, setLocalMatchId] = useState<bigint | null>(null);
 
   // Check if player has an active match on-chain
@@ -28,17 +31,33 @@ export default function Home() {
       const savedMatchId = localStorage.getItem("clapo-matchId");
       if (savedMatchId) {
         setLocalMatchId(BigInt(savedMatchId));
+        setGameMode("match");
       }
     }
   }, []);
 
+  // Auto-switch to match mode if active match found
+  useEffect(() => {
+    if (currentMatchId !== null && currentMatchId > BigInt(0)) {
+      setGameMode("match");
+    }
+  }, [currentMatchId]);
+
   const handleMatchCreated = (matchId: bigint) => {
     setLocalMatchId(matchId);
     localStorage.setItem("clapo-matchId", matchId.toString());
+    setGameMode("match");
+  };
+
+  const handleMatchJoined = (matchId: bigint) => {
+    setLocalMatchId(matchId);
+    localStorage.setItem("clapo-matchId", matchId.toString());
+    setGameMode("match");
   };
 
   const handleMatchEnd = () => {
     setLocalMatchId(null);
+    setGameMode("menu");
     localStorage.removeItem("clapo-matchId");
     localStorage.removeItem("clapo-salt");
     localStorage.removeItem("clapo-assets");
@@ -96,9 +115,85 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {currentMatchId === null || currentMatchId === BigInt(0) ? (
-          <DraftPanel onMatchCreated={handleMatchCreated} />
-        ) : (
+        {gameMode === "menu" && (
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-5xl font-bold text-white mb-4">Choose Your Path</h2>
+              <p className="text-gray-400 text-lg">
+                Create a new match or join an existing one
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Create Match */}
+              <button
+                onClick={() => setGameMode("create")}
+                className="bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-2xl p-8 transition-all transform hover:scale-105 border-2 border-purple-500"
+              >
+                <div className="text-6xl mb-4">🎮</div>
+                <h3 className="text-3xl font-bold text-white mb-3">Create Match</h3>
+                <p className="text-purple-200 mb-4">
+                  Start a new match and wait for an opponent to join
+                </p>
+                <div className="bg-purple-900/50 rounded-lg p-3 text-sm text-purple-200">
+                  <div className="font-semibold mb-1">You&apos;ll be Player 1</div>
+                  <div>Share your Match ID with friends</div>
+                </div>
+              </button>
+
+              {/* Join Match */}
+              <button
+                onClick={() => setGameMode("join")}
+                className="bg-gradient-to-br from-pink-600 to-pink-800 hover:from-pink-700 hover:to-pink-900 rounded-2xl p-8 transition-all transform hover:scale-105 border-2 border-pink-500"
+              >
+                <div className="text-6xl mb-4">⚔️</div>
+                <h3 className="text-3xl font-bold text-white mb-3">Join Match</h3>
+                <p className="text-pink-200 mb-4">
+                  Enter a Match ID to challenge an opponent
+                </p>
+                <div className="bg-pink-900/50 rounded-lg p-3 text-sm text-pink-200">
+                  <div className="font-semibold mb-1">You&apos;ll be Player 2</div>
+                  <div>Get the Match ID from your friend</div>
+                </div>
+              </button>
+            </div>
+
+            {/* Info Section */}
+            <div className="mt-12 bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <h4 className="text-xl font-bold text-white mb-4">How to Play</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
+                <div>
+                  <div className="font-bold text-purple-400 mb-2">1. Build Portfolio</div>
+                  <div>Select 7 crypto assets within 100 point budget</div>
+                </div>
+                <div>
+                  <div className="font-bold text-pink-400 mb-2">2. Choose Roles</div>
+                  <div>Pick Leader (2×) and Co-Leader (1.5×) multipliers</div>
+                </div>
+                <div>
+                  <div className="font-bold text-blue-400 mb-2">3. Battle</div>
+                  <div>120-second price battle - highest score wins!</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {gameMode === "create" && (
+          <DraftPanel
+            onMatchCreated={handleMatchCreated}
+            onBack={() => setGameMode("menu")}
+          />
+        )}
+
+        {gameMode === "join" && (
+          <JoinMatch
+            onMatchJoined={handleMatchJoined}
+            onBack={() => setGameMode("menu")}
+          />
+        )}
+
+        {gameMode === "match" && currentMatchId !== null && currentMatchId > BigInt(0) && (
           <MatchRoom matchId={currentMatchId} onMatchEnd={handleMatchEnd} />
         )}
       </main>
