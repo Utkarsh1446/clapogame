@@ -1,0 +1,13 @@
+{
+  "name": "clapo-game",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd clapo-frontend && npm run dev",
+    "build": "cd clapo-frontend && npm install && npm run build",
+    "start": "cd clapo-frontend && npm start"
+  },
+  "workspaces": [
+    "clapo-frontend"
+  ]
+}

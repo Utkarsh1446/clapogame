@@ -1,0 +1,13 @@
+{
+  "buildCommand": "cd clapo-frontend && npm install && npm run build",
+  "devCommand": "cd clapo-frontend && npm run dev",
+  "installCommand": "cd clapo-frontend && npm install",
+  "outputDirectory": "clapo-frontend/.next",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/clapo-frontend/$1"
+    }
+  ]
+}
