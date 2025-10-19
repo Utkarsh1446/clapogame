@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
 import { GAME_CONFIG, MatchState, ASSETS } from "@/lib/constants";
 import { useMatch, useMatchmaker } from "@/hooks/useMatchmaker";
@@ -9,6 +9,28 @@ import { ResultsModal } from "./ResultsModal";
 interface MatchRoomProps {
   matchId: bigint;
   onMatchEnd: () => void;
+}
+
+// Type for the Match struct returned from contract
+interface MatchData {
+  matchId: bigint;
+  state: number;
+  player1: {
+    player: string;
+    nftContract: string;
+    nftTokenId: bigint;
+    commitHash: string;
+    hasCommitted: boolean;
+    hasRevealed: boolean;
+  };
+  player2: {
+    player: string;
+    nftContract: string;
+    nftTokenId: bigint;
+    commitHash: string;
+    hasCommitted: boolean;
+    hasRevealed: boolean;
+  };
 }
 
 export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
@@ -20,10 +42,11 @@ export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
   const [showResults, setShowResults] = useState(false);
   const [revealing, setRevealing] = useState(false);
 
-  // Parse match data
-  const matchState = match ? Number((match as any)[0]) : MatchState.Created;
-  const player1 = match ? (match as any)[1] : null;
-  const player2 = match ? (match as any)[2] : null;
+  // Parse match data with proper types
+  const matchData = match as unknown as MatchData | undefined;
+  const matchState = matchData ? Number(matchData.state) : MatchState.Created;
+  const player1 = matchData?.player1.player || null;
+  const player2 = matchData?.player2.player || null;
   const hasPlayer2 = player2 && player2 !== "0x0000000000000000000000000000000000000000";
   const isPlayer1 = address?.toLowerCase() === player1?.toLowerCase();
 
@@ -37,6 +60,26 @@ export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
   const savedSalt = typeof window !== "undefined"
     ? localStorage.getItem("clapo-salt") || ""
     : "";
+
+  const handleMatchEnd = useCallback(async () => {
+    setRevealing(true);
+    try {
+      // Reveal and settle
+      await revealAndSettle(
+        matchId,
+        savedAssets,
+        savedRoles,
+        savedSalt
+      );
+
+      setShowResults(true);
+    } catch (error) {
+      console.error("Error revealing:", error);
+      alert("Failed to reveal picks. Check console for details.");
+    } finally {
+      setRevealing(false);
+    }
+  }, [matchId, savedAssets, savedRoles, savedSalt, revealAndSettle]);
 
   // Timer for started matches
   useEffect(() => {
@@ -54,7 +97,7 @@ export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [matchState]);
+  }, [matchState, handleMatchEnd]);
 
   const handleStartMatch = async () => {
     if (!hasPlayer2) {
@@ -67,26 +110,6 @@ export function MatchRoom({ matchId, onMatchEnd }: MatchRoomProps) {
     } catch (error) {
       console.error("Error starting match:", error);
       alert("Failed to start match. Check console for details.");
-    }
-  };
-
-  const handleMatchEnd = async () => {
-    setRevealing(true);
-    try {
-      // Reveal and settle
-      await revealAndSettle(
-        matchId,
-        savedAssets,
-        savedRoles,
-        savedSalt
-      );
-
-      setShowResults(true);
-    } catch (error) {
-      console.error("Error revealing:", error);
-      alert("Failed to reveal picks. Check console for details.");
-    } finally {
-      setRevealing(false);
     }
   };
 
