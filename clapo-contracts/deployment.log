@@ -1,0 +1,66 @@
+Compiling 1 files with Solc 0.8.24
+Solc 0.8.24 finished in 1.57s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+   --> src/Matchmaker.sol:214:24:
+    |
+214 |         (bool isValid, uint256 totalCost) = assetRegistry.validatePortfolio(assets);
+    |                        ^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> script/DeployMonad.s.sol:74:9:
+   |
+74 |         string memory deployments = string(abi.encodePacked(
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Script ran successfully.
+
+== Logs ==
+  === Deploying to Monad Testnet ===
+  Using Pyth Oracle at: 0x2880aB155794e7179c9eE2e38200202908C17B43
+  
+  Deploying AssetRegistry...
+  AssetRegistry deployed at: 0x64cDDfe26139dd33acB0D0cC9a158C2a0E6e5aA9
+  Deploying NFTVault...
+  NFTVault deployed at: 0x60b29E9Be8A30e0f375eea8bCD143D9c80d337Bf
+  Deploying Matchmaker...
+  Matchmaker deployed at: 0x00c4c9EaA8884060d5312771CB6846CEb735bA50
+  Deploying ClapoNFT...
+  ClapoNFT deployed at: 0x3fad8AcCA62eFb42B77E938a91BCCe7286b37b53
+  
+Setting up NFTVault...
+  NFTVault configured
+  
+Adding assets to AssetRegistry...
+  Adding Tier A assets...
+  Adding Tier B assets...
+  Adding Tier C assets...
+  Adding Tier D assets...
+  Adding Tier E assets...
+  Adding Tier F assets...
+  Successfully added 18 assets to registry
+  
+=== MONAD TESTNET DEPLOYMENT SUMMARY ===
+  AssetRegistry: 0x64cDDfe26139dd33acB0D0cC9a158C2a0E6e5aA9
+  NFTVault: 0x60b29E9Be8A30e0f375eea8bCD143D9c80d337Bf
+  PythOracle: 0x2880aB155794e7179c9eE2e38200202908C17B43
+  Matchmaker: 0x00c4c9EaA8884060d5312771CB6846CEb735bA50
+  ClapoNFT: 0x3fad8AcCA62eFb42B77E938a91BCCe7286b37b53
+  =======================================
+
+  
+Copy these addresses to clapo-frontend/.env.local
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 10143
+
+Estimated gas price: 102 gwei
+
+Estimated total gas used for script: 11566209
+
+Estimated amount required: 1.179753318 ETH
+
+==========================
