@@ -5,6 +5,7 @@ import { useAccount } from "wagmi";
 import { ASSETS, GAME_CONFIG, CONTRACT_ADDRESSES, Role, type AssetSymbol } from "@/lib/constants";
 import { useMatchmaker } from "@/hooks/useMatchmaker";
 import { useClapoNFT } from "@/hooks/useClapoNFT";
+import { NFTSelector } from "./NFTSelector";
 
 interface SelectedAsset {
   symbol: AssetSymbol;
@@ -24,7 +25,8 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
   const [selectedAssets, setSelectedAssets] = useState<SelectedAsset[]>([]);
   const [leaderIndex, setLeaderIndex] = useState<number | null>(null);
   const [coLeaderIndex, setCoLeaderIndex] = useState<number | null>(null);
-  const [nftTokenId, setNftTokenId] = useState<string>("0"); // User inputs their NFT ID
+  const [nftTokenId, setNftTokenId] = useState<string>(""); // User selects their NFT ID
+  const [showNFTSelector, setShowNFTSelector] = useState(false);
 
   const usedBudget = selectedAssets.reduce(
     (sum, { symbol }) => sum + ASSETS[symbol].cost,
@@ -78,7 +80,8 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
   const canCreateMatch =
     selectedAssets.length === GAME_CONFIG.REQUIRED_ASSETS &&
     leaderIndex !== null &&
-    coLeaderIndex !== null;
+    coLeaderIndex !== null &&
+    nftTokenId !== "";
 
   const handleCreateMatch = async () => {
     if (!canCreateMatch || !address) return;
@@ -252,18 +255,30 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
         </div>
       )}
 
-      {/* NFT Input and Create Match Button */}
+      {/* NFT Selection and Create Match Button */}
       <div className="text-center space-y-4">
         {selectedAssets.length === GAME_CONFIG.REQUIRED_ASSETS && (
           <div className="inline-block">
-            <label className="block text-sm text-gray-400 mb-2">Your NFT Token ID</label>
-            <input
-              type="number"
-              value={nftTokenId}
-              onChange={(e) => setNftTokenId(e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white text-center w-40"
-              min="0"
-            />
+            <label className="block text-sm text-gray-400 mb-2">NFT to Stake</label>
+            <button
+              onClick={() => setShowNFTSelector(true)}
+              className="bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 hover:border-purple-500 rounded-lg px-6 py-3 text-white transition-all"
+            >
+              {nftTokenId ? (
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">🎮</div>
+                  <div className="text-left">
+                    <div className="text-xs text-gray-400">Clapo Game NFT</div>
+                    <div className="font-bold">#{nftTokenId}</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>Select NFT</span>
+                  <span className="text-lg">→</span>
+                </div>
+              )}
+            </button>
           </div>
         )}
 
@@ -285,10 +300,20 @@ export function DraftPanel({ onMatchCreated, onBack }: DraftPanelProps) {
               ? "Choose a Leader"
               : coLeaderIndex === null
               ? "Choose a Co-Leader"
+              : nftTokenId === ""
+              ? "Select NFT to Stake"
               : "Create Match"}
           </button>
         </div>
       </div>
+
+      {/* NFT Selector Modal */}
+      {showNFTSelector && (
+        <NFTSelector
+          onSelect={(tokenId) => setNftTokenId(tokenId)}
+          onClose={() => setShowNFTSelector(false)}
+        />
+      )}
     </div>
   );
 }
