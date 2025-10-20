@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAccount, useReadContracts } from "wagmi";
 import { CONTRACT_ADDRESSES } from "@/lib/constants";
 import ClapoNFTABI from "@/lib/contracts/ClapoNFT.json";
+import type { Abi } from "viem";
 
 interface NFTSelectorProps {
   onSelect: (tokenId: string) => void;
@@ -26,7 +27,7 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
   const { data: balance } = useReadContracts({
     contracts: [{
       address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
-      abi: ClapoNFTABI.abi as any,
+      abi: ClapoNFTABI.abi as Abi,
       functionName: "balanceOf",
       args: address ? [address] : undefined,
     }],
@@ -38,7 +39,7 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
   const { data: ownershipResults } = useReadContracts({
     contracts: Array.from({ length: 20 }, (_, i) => ({
       address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
-      abi: ClapoNFTABI.abi as any,
+      abi: ClapoNFTABI.abi as Abi,
       functionName: "ownerOf",
       args: [BigInt(i)],
     })),
