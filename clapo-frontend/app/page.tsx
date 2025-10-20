@@ -16,6 +16,7 @@ export default function Home() {
 
   const [gameMode, setGameMode] = useState<GameMode>("menu");
   const [localMatchId, setLocalMatchId] = useState<bigint | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Check if player has an active match on-chain
   const { matchId: activeMatchId } = usePlayerActiveMatch(address);
@@ -28,11 +29,21 @@ export default function Home() {
   // Load match ID from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedMatchId = localStorage.getItem("clapo-matchId");
-      if (savedMatchId) {
-        setLocalMatchId(BigInt(savedMatchId));
-        setGameMode("match");
+      try {
+        const savedMatchId = localStorage.getItem("clapo-matchId");
+        if (savedMatchId && savedMatchId !== "0") {
+          setLocalMatchId(BigInt(savedMatchId));
+          setGameMode("match");
+        }
+      } catch (error) {
+        console.error("Error loading match ID:", error);
+        // Clear corrupted data
+        localStorage.removeItem("clapo-matchId");
+      } finally {
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
@@ -63,6 +74,17 @@ export default function Home() {
     localStorage.removeItem("clapo-assets");
     localStorage.removeItem("clapo-roles");
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🎮</div>
+          <p className="text-gray-400">Loading Clapo Game...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return (
