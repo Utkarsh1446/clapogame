@@ -26,7 +26,7 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
   const { data: balance } = useReadContracts({
     contracts: [{
       address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
-      abi: ClapoNFTABI.abi,
+      abi: ClapoNFTABI.abi as any,
       functionName: "balanceOf",
       args: address ? [address] : undefined,
     }],
@@ -38,7 +38,7 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
   const { data: ownershipResults } = useReadContracts({
     contracts: Array.from({ length: 20 }, (_, i) => ({
       address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
-      abi: ClapoNFTABI.abi,
+      abi: ClapoNFTABI.abi as any,
       functionName: "ownerOf",
       args: [BigInt(i)],
     })),
