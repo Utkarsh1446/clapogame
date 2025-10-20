@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
 import { CONTRACT_ADDRESSES } from "@/lib/constants";
 import ClapoNFTABI from "@/lib/contracts/ClapoNFT.json";
 
@@ -20,72 +20,57 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
   const { address } = useAccount();
   const [selectedTokenId, setSelectedTokenId] = useState<number | null>(null);
   const [ownedNFTs, setOwnedNFTs] = useState<NFT[]>([]);
+  const [isScanning, setIsScanning] = useState(true);
 
   // Get user's NFT balance
-  const { data: balance } = useReadContract({
-    address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
-    abi: ClapoNFTABI.abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
+  const { data: balance } = useReadContracts({
+    contracts: [{
+      address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
+      abi: ClapoNFTABI.abi,
+      functionName: "balanceOf",
+      args: address ? [address] : undefined,
+    }],
   });
 
-  // Fetch owned NFTs
+  const nftBalance = balance?.[0]?.result ? Number(balance[0].result) : 0;
+
+  // Check ownership of token IDs 0-20
+  const ownershipChecks = Array.from({ length: 20 }, (_, i) => ({
+    address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
+    abi: ClapoNFTABI.abi,
+    functionName: "ownerOf",
+    args: [BigInt(i)],
+  }));
+
+  const { data: ownershipResults } = useReadContracts({
+    contracts: ownershipChecks,
+  });
+
+  // Process results to find owned NFTs
   useEffect(() => {
-    const fetchOwnedNFTs = async () => {
-      if (!address || !balance) return;
+    if (!address || !ownershipResults) {
+      setIsScanning(true);
+      return;
+    }
 
-      const nfts: NFT[] = [];
-      const nftBalance = Number(balance);
+    const nfts: NFT[] = [];
 
-      // Check token IDs 0-20 to find which ones the user owns
-      for (let i = 0; i < 20; i++) {
-        try {
-          const response = await fetch(
-            `https://testnet-rpc.monad.xyz/`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                jsonrpc: "2.0",
-                method: "eth_call",
-                params: [
-                  {
-                    to: CONTRACT_ADDRESSES.ClapoNFT,
-                    data: `0x6352211e${i.toString(16).padStart(64, "0")}`, // ownerOf(uint256)
-                  },
-                  "latest",
-                ],
-                id: 1,
-              }),
-            }
-          );
-
-          const data = await response.json();
-
-          if (data.result && data.result !== "0x") {
-            const owner = "0x" + data.result.slice(-40);
-            if (owner.toLowerCase() === address.toLowerCase()) {
-              nfts.push({
-                tokenId: i,
-                collection: CONTRACT_ADDRESSES.ClapoNFT,
-                collectionName: "Clapo Game NFT",
-              });
-            }
-          }
-        } catch (error) {
-          // Token doesn't exist or error, skip
-          continue;
+    ownershipResults.forEach((result, tokenId) => {
+      if (result.status === "success" && result.result) {
+        const owner = result.result as string;
+        if (owner.toLowerCase() === address.toLowerCase()) {
+          nfts.push({
+            tokenId,
+            collection: CONTRACT_ADDRESSES.ClapoNFT,
+            collectionName: "Clapo Game NFT",
+          });
         }
-
-        // Stop if we found all NFTs
-        if (nfts.length >= nftBalance) break;
       }
+    });
 
-      setOwnedNFTs(nfts);
-    };
-
-    fetchOwnedNFTs();
-  }, [address, balance]);
+    setOwnedNFTs(nfts);
+    setIsScanning(false);
+  }, [address, ownershipResults]);
 
   const handleSelect = () => {
     if (selectedTokenId !== null) {
@@ -115,13 +100,29 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(80vh-200px)]">
-          {ownedNFTs.length === 0 ? (
+          {isScanning ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🔍</div>
-              <p className="text-gray-400 text-lg mb-2">No NFTs found</p>
+              <p className="text-gray-400 text-lg mb-2">Scanning for your NFTs...</p>
               <p className="text-gray-500 text-sm">
-                You need a Clapo Game NFT to play. Contact the admin to mint one.
+                This may take a few seconds
               </p>
+            </div>
+          ) : ownedNFTs.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">😕</div>
+              <p className="text-gray-400 text-lg mb-2">No NFTs found</p>
+              <p className="text-gray-500 text-sm mb-4">
+                You need a Clapo Game NFT to play.
+              </p>
+              <div className="bg-gray-800 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-gray-400 text-sm mb-2">
+                  Connected wallet: <span className="text-white font-mono">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+                </p>
+                <p className="text-gray-400 text-sm">
+                  NFT balance detected: <span className="text-white">{nftBalance}</span>
+                </p>
+              </div>
             </div>
           ) : (
             <>
@@ -192,14 +193,16 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
             </button>
             <button
               onClick={handleSelect}
-              disabled={selectedTokenId === null}
+              disabled={selectedTokenId === null || isScanning}
               className={`flex-1 py-3 rounded-lg font-bold transition-all ${
-                selectedTokenId !== null
+                selectedTokenId !== null && !isScanning
                   ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
             >
-              {selectedTokenId !== null
+              {isScanning
+                ? "Scanning..."
+                : selectedTokenId !== null
                 ? `Select NFT #${selectedTokenId}`
                 : "Select an NFT"}
             </button>
