@@ -35,15 +35,13 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
   const nftBalance = balance?.[0]?.result ? Number(balance[0].result) : 0;
 
   // Check ownership of token IDs 0-20
-  const ownershipChecks = Array.from({ length: 20 }, (_, i) => ({
-    address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
-    abi: ClapoNFTABI.abi,
-    functionName: "ownerOf",
-    args: [BigInt(i)],
-  }));
-
   const { data: ownershipResults } = useReadContracts({
-    contracts: ownershipChecks,
+    contracts: Array.from({ length: 20 }, (_, i) => ({
+      address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
+      abi: ClapoNFTABI.abi,
+      functionName: "ownerOf",
+      args: [BigInt(i)],
+    })),
   });
 
   // Process results to find owned NFTs
