@@ -108,12 +108,36 @@ export function useMatchmaker() {
     });
   };
 
+  // Clear stuck match - allows player to leave expired/abandoned matches
+  const clearStuckMatch = async () => {
+    return writeContract({
+      address: CONTRACT_ADDRESSES.Matchmaker as `0x${string}`,
+      abi: MatchmakerABI.abi,
+      functionName: "clearStuckMatch",
+      args: [],
+      gas: BigInt(10000000), // Increased gas limit for Monad
+    });
+  };
+
+  // Force expire match - anyone can cancel matches that expired (120+ seconds old)
+  const forceExpireMatch = async (matchId: bigint) => {
+    return writeContract({
+      address: CONTRACT_ADDRESSES.Matchmaker as `0x${string}`,
+      abi: MatchmakerABI.abi,
+      functionName: "forceExpireMatch",
+      args: [matchId],
+      gas: BigInt(10000000), // Increased gas limit for Monad
+    });
+  };
+
   return {
     createMatch,
     joinMatch,
     startMatch,
     revealAndSettle,
     cancelMatch,
+    clearStuckMatch,
+    forceExpireMatch,
     isPending,
     isSuccess,
     hash,

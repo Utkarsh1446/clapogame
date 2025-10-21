@@ -341,6 +341,77 @@ contract Matchmaker is ReentrancyGuard {
     }
 
     /**
+     * @notice Force cancel a match that's been waiting too long (120+ seconds)
+     * @dev Anyone can call this to clean up abandoned matches
+     * @param matchId Match ID to cancel
+     */
+    function forceExpireMatch(uint256 matchId) external nonReentrant {
+        Match storage m = matches[matchId];
+        require(m.state == MatchState.Created, "Match already started or settled");
+        require(block.timestamp >= m.createdAt + MATCH_DURATION, "Match not expired yet");
+
+        // Return NFT to player 1
+        nftVault.releaseNFT(m.player1.player, m.player1.nftContract, m.player1.nftTokenId);
+
+        m.state = MatchState.Settled;
+        playerActiveMatch[m.player1.player] = 0;
+
+        emit MatchCancelled(matchId);
+    }
+
+    /**
+     * @notice Clear a player's stuck match registration
+     * @dev Allows players to leave matches that are abandoned or in invalid state
+     */
+    function clearStuckMatch() external nonReentrant {
+        uint256 matchId = playerActiveMatch[msg.sender];
+        require(matchId != 0, "No active match");
+
+        Match storage m = matches[matchId];
+
+        // Only allow clearing if:
+        // 1. Match is in Created state and expired (120+ seconds old)
+        // 2. Match is in Committed state and expired (never started)
+        // 3. Match is in Ended state (someone can call settle)
+
+        if (m.state == MatchState.Created) {
+            require(block.timestamp >= m.createdAt + MATCH_DURATION, "Match not expired");
+
+            // If caller is player1, return their NFT
+            if (msg.sender == m.player1.player) {
+                nftVault.releaseNFT(m.player1.player, m.player1.nftContract, m.player1.nftTokenId);
+                m.state = MatchState.Settled;
+            }
+
+            playerActiveMatch[msg.sender] = 0;
+            emit MatchCancelled(matchId);
+
+        } else if (m.state == MatchState.Committed) {
+            require(block.timestamp >= m.createdAt + (MATCH_DURATION * 2), "Match not expired");
+
+            // Return NFTs to both players
+            if (msg.sender == m.player1.player) {
+                nftVault.releaseNFT(m.player1.player, m.player1.nftContract, m.player1.nftTokenId);
+                playerActiveMatch[m.player1.player] = 0;
+            }
+            if (msg.sender == m.player2.player) {
+                nftVault.releaseNFT(m.player2.player, m.player2.nftContract, m.player2.nftTokenId);
+                playerActiveMatch[m.player2.player] = 0;
+            }
+
+            // If both cleared, mark as settled
+            if (playerActiveMatch[m.player1.player] == 0 && playerActiveMatch[m.player2.player] == 0) {
+                m.state = MatchState.Settled;
+            }
+
+            emit MatchCancelled(matchId);
+
+        } else {
+            revert("Match state not clearable");
+        }
+    }
+
+    /**
      * @notice Get match details
      * @param matchId Match ID
      * @return Match struct

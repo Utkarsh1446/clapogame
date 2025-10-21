@@ -5,7 +5,7 @@ import { DraftPanel } from "@/components/DraftPanel";
 import { JoinMatch } from "@/components/JoinMatch";
 import { MatchRoom } from "@/components/MatchRoom";
 import { useState, useEffect } from "react";
-import { usePlayerActiveMatch } from "@/hooks/useMatchmaker";
+import { usePlayerActiveMatch, useMatchmaker } from "@/hooks/useMatchmaker";
 
 type GameMode = "menu" | "create" | "join" | "match";
 
@@ -17,9 +17,11 @@ export default function Home() {
   const [gameMode, setGameMode] = useState<GameMode>("menu");
   const [localMatchId, setLocalMatchId] = useState<bigint | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
 
   // Check if player has an active match on-chain
   const { matchId: activeMatchId } = usePlayerActiveMatch(address);
+  const { clearStuckMatch, isPending } = useMatchmaker();
 
   // Use on-chain match ID if available, otherwise use local
   const currentMatchId = activeMatchId !== undefined && activeMatchId > BigInt(0)
@@ -73,6 +75,27 @@ export default function Home() {
     localStorage.removeItem("clapo-salt");
     localStorage.removeItem("clapo-assets");
     localStorage.removeItem("clapo-roles");
+  };
+
+  const handleClearStuckMatch = async () => {
+    if (!confirm("This will clear you from any stuck/expired match and return your NFT. Continue?")) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      await clearStuckMatch();
+
+      // Clear local storage
+      handleMatchEnd();
+
+      alert("Stuck match cleared! You can now create or join a new match.");
+    } catch (error) {
+      console.error("Error clearing stuck match:", error);
+      alert("Failed to clear stuck match. Make sure you have an active match that is expired (120+ seconds old).");
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   if (isLoading) {
@@ -198,6 +221,26 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {/* Clear Stuck Match Button */}
+            {activeMatchId && activeMatchId > BigInt(0) && (
+              <div className="mt-8 text-center">
+                <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 inline-block mb-4">
+                  <p className="text-yellow-400 font-bold mb-2">⚠️ Stuck in a match?</p>
+                  <p className="text-yellow-300 text-sm mb-3">
+                    If you&apos;re stuck in Match #{activeMatchId.toString()} from an abandoned game,
+                    you can clear it after 120 seconds.
+                  </p>
+                  <button
+                    onClick={handleClearStuckMatch}
+                    disabled={isClearing || isPending}
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isClearing || isPending ? "Clearing..." : "Clear Stuck Match"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
