@@ -101,10 +101,18 @@ export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
       const assets = selectedAssets.map(a => a.symbol);
       const salt = `clapo-${Date.now()}-${Math.random()}`;
 
+      console.log("Starting join match process...", { matchId: matchId.toString(), nftTokenId });
+
       // First approve NFT
+      console.log("Step 1: Approving NFT...");
       await approve(BigInt(nftTokenId));
+      console.log("NFT approved successfully!");
+
+      // Wait a bit for approval to propagate
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       // Then join match
+      console.log("Step 2: Joining match...");
       await joinMatch(
         matchId,
         CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
@@ -113,19 +121,22 @@ export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
         roles,
         salt
       );
+      console.log("Join match transaction sent!");
 
       // Store salt for later reveal
       localStorage.setItem("clapo-salt", salt);
       localStorage.setItem("clapo-assets", JSON.stringify(assets));
       localStorage.setItem("clapo-roles", JSON.stringify(roles));
 
-      // Wait a moment for transaction to confirm
+      // Wait for transaction to confirm
+      console.log("Waiting for transaction confirmation...");
       setTimeout(() => {
+        console.log("Match joined successfully! Redirecting...");
         onMatchJoined(matchId);
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error("Error joining match:", error);
-      alert("Failed to join match. Check console for details.");
+      alert(`Failed to join match: ${error instanceof Error ? error.message : "Unknown error"}. Check console for details.`);
     }
   };
 
