@@ -47,10 +47,11 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
 
   // Process results to find owned NFTs
   useEffect(() => {
-    console.log("NFTSelector Debug v2:", {
+    console.log("NFTSelector Debug v3 - HARDCODED:", {
       address,
       ownershipResults,
       contractAddress: CONTRACT_ADDRESSES.ClapoNFT,
+      expectedAddress: "0x3B5a097c560636D5090266d5cBf5578B9940543F",
       nftBalance,
       timestamp: new Date().toISOString(),
     });
