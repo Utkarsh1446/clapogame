@@ -35,9 +35,9 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
 
   const nftBalance = balance?.[0]?.result ? Number(balance[0].result) : 0;
 
-  // Check ownership of token IDs 0-20
+  // Check ownership of token IDs 0-10
   const { data: ownershipResults } = useReadContracts({
-    contracts: Array.from({ length: 20 }, (_, i) => ({
+    contracts: Array.from({ length: 10 }, (_, i) => ({
       address: CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
       abi: ClapoNFTABI.abi as Abi,
       functionName: "ownerOf",
