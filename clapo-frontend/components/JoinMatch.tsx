@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useState, useEffect } from "react";
+import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { ASSETS, GAME_CONFIG, CONTRACT_ADDRESSES, Role, type AssetSymbol } from "@/lib/constants";
 import { useMatchmaker } from "@/hooks/useMatchmaker";
 import { useClapoNFT } from "@/hooks/useClapoNFT";
@@ -19,7 +19,7 @@ interface JoinMatchProps {
 
 export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
   const { address } = useAccount();
-  const { joinMatch, isPending } = useMatchmaker();
+  const { joinMatch, isPending, hash } = useMatchmaker();
   const { approve, isPending: isApproving } = useClapoNFT();
 
   const [matchIdInput, setMatchIdInput] = useState<string>("");
@@ -28,6 +28,21 @@ export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
   const [coLeaderIndex, setCoLeaderIndex] = useState<number | null>(null);
   const [nftTokenId, setNftTokenId] = useState<string>("");
   const [showNFTSelector, setShowNFTSelector] = useState(false);
+
+  // Wait for join transaction to be mined
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  // Redirect when transaction is confirmed
+  useEffect(() => {
+    if (isConfirmed && matchIdInput) {
+      console.log("Transaction confirmed! Redirecting to match room...");
+      setTimeout(() => {
+        onMatchJoined(BigInt(matchIdInput));
+      }, 1000);
+    }
+  }, [isConfirmed, matchIdInput, onMatchJoined]);
 
   const usedBudget = selectedAssets.reduce(
     (sum, { symbol }) => sum + ASSETS[symbol].cost,
@@ -113,7 +128,7 @@ export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
 
       // Then join match
       console.log("Step 2: Joining match...");
-      await joinMatch(
+      const txHash = await joinMatch(
         matchId,
         CONTRACT_ADDRESSES.ClapoNFT as `0x${string}`,
         BigInt(nftTokenId),
@@ -121,19 +136,15 @@ export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
         roles,
         salt
       );
-      console.log("Join match transaction sent!");
+      console.log("Join match transaction sent! Hash:", txHash);
 
       // Store salt for later reveal
       localStorage.setItem("clapo-salt", salt);
       localStorage.setItem("clapo-assets", JSON.stringify(assets));
       localStorage.setItem("clapo-roles", JSON.stringify(roles));
 
-      // Wait for transaction to confirm
-      console.log("Waiting for transaction confirmation...");
-      setTimeout(() => {
-        console.log("Match joined successfully! Redirecting...");
-        onMatchJoined(matchId);
-      }, 3000);
+      console.log("Transaction submitted. Please wait for it to be confirmed...");
+      // Note: The redirect will happen automatically when useWaitForTransactionReceipt detects confirmation
     } catch (error) {
       console.error("Error joining match:", error);
       alert(`Failed to join match: ${error instanceof Error ? error.message : "Unknown error"}. Check console for details.`);
@@ -306,14 +317,16 @@ export function JoinMatch({ onMatchJoined, onBack }: JoinMatchProps) {
         <div>
           <button
             onClick={handleJoinMatch}
-            disabled={!canJoinMatch || isPending || isApproving}
+            disabled={!canJoinMatch || isPending || isApproving || isConfirming}
             className={`px-8 py-4 rounded-lg text-lg font-bold transition-all ${
-              canJoinMatch && !isPending && !isApproving
+              canJoinMatch && !isPending && !isApproving && !isConfirming
                 ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transform hover:scale-105"
                 : "bg-gray-700 text-gray-500 cursor-not-allowed"
             }`}
           >
-            {isPending || isApproving
+            {isConfirming
+              ? "Confirming Transaction..."
+              : isPending || isApproving
               ? "Joining Match..."
               : !matchIdInput.trim()
               ? "Enter Match ID"
