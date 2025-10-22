@@ -47,6 +47,13 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
 
   // Process results to find owned NFTs
   useEffect(() => {
+    console.log("NFTSelector Debug:", {
+      address,
+      ownershipResults,
+      contractAddress: CONTRACT_ADDRESSES.ClapoNFT,
+      nftBalance,
+    });
+
     if (!address || !ownershipResults) {
       setIsScanning(true);
       return;
@@ -55,8 +62,10 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
     const nfts: NFT[] = [];
 
     ownershipResults.forEach((result, tokenId) => {
+      console.log(`Token ${tokenId}:`, result);
       if (result.status === "success" && result.result) {
         const owner = result.result as string;
+        console.log(`Token ${tokenId} owner:`, owner, "User:", address);
         if (owner.toLowerCase() === address.toLowerCase()) {
           nfts.push({
             tokenId,
@@ -67,9 +76,10 @@ export function NFTSelector({ onSelect, onClose }: NFTSelectorProps) {
       }
     });
 
+    console.log("Found NFTs:", nfts);
     setOwnedNFTs(nfts);
     setIsScanning(false);
-  }, [address, ownershipResults]);
+  }, [address, ownershipResults, nftBalance]);
 
   const handleSelect = () => {
     if (selectedTokenId !== null) {
