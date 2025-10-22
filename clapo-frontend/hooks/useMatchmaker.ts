@@ -41,7 +41,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "createMatch",
       args: [nftContract, nftTokenId, commitHash],
-      gas: BigInt(10000000), // Increased gas limit for Monad
+      gas: BigInt(15000000), // Increased gas limit for Monad - createMatch needs more
     });
   };
 
@@ -61,7 +61,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "joinMatch",
       args: [matchId, nftContract, nftTokenId, commitHash],
-      gas: BigInt(10000000), // Increased gas limit for Monad
+      gas: BigInt(15000000), // Increased gas limit for Monad - joinMatch needs more
     });
   };
 
@@ -72,7 +72,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "startMatch",
       args: [matchId],
-      gas: BigInt(10000000), // Increased gas limit for Monad
+      gas: BigInt(15000000), // Increased gas limit for Monad
     });
   };
 
@@ -104,7 +104,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "cancelMatch",
       args: [matchId],
-      gas: BigInt(10000000), // Increased gas limit for Monad
+      gas: BigInt(15000000), // Increased gas limit for Monad
     });
   };
 
@@ -115,7 +115,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "clearStuckMatch",
       args: [],
-      gas: BigInt(10000000), // Increased gas limit for Monad
+      gas: BigInt(15000000), // Increased gas limit for Monad
     });
   };
 
@@ -126,7 +126,7 @@ export function useMatchmaker() {
       abi: MatchmakerABI.abi,
       functionName: "forceExpireMatch",
       args: [matchId],
-      gas: BigInt(10000000), // Increased gas limit for Monad
+      gas: BigInt(15000000), // Increased gas limit for Monad
     });
   };
 
