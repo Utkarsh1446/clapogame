@@ -77,9 +77,9 @@ export enum MatchState {
 
 // Contract addresses - will be populated after deployment
 export const CONTRACT_ADDRESSES = {
-  AssetRegistry: process.env.NEXT_PUBLIC_ASSET_REGISTRY_ADDRESS || "",
-  NFTVault: process.env.NEXT_PUBLIC_NFT_VAULT_ADDRESS || "",
-  Matchmaker: process.env.NEXT_PUBLIC_MATCHMAKER_ADDRESS || "",
-  ClapoNFT: process.env.NEXT_PUBLIC_CLAPO_NFT_ADDRESS || "",
-  MockPyth: process.env.NEXT_PUBLIC_MOCK_PYTH_ADDRESS || "",
+  AssetRegistry: process.env.NEXT_PUBLIC_ASSET_REGISTRY_ADDRESS || "0x898bcA461cE3B7f0697e15Dd2209C673dae5fbe2",
+  NFTVault: process.env.NEXT_PUBLIC_NFT_VAULT_ADDRESS || "0xAEB69e308A2580e48F0371FCD89EcAe7f700775a",
+  Matchmaker: process.env.NEXT_PUBLIC_MATCHMAKER_ADDRESS || "0x1E5152468537309Bd797f6EDc1fe112e98a09402",
+  ClapoNFT: process.env.NEXT_PUBLIC_CLAPO_NFT_ADDRESS || "0x3B5a097c560636D5090266d5cBf5578B9940543F",
+  MockPyth: process.env.NEXT_PUBLIC_MOCK_PYTH_ADDRESS || "0x2880aB155794e7179c9eE2e38200202908C17B43",
 } as const;
