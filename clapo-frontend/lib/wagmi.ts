@@ -1,6 +1,6 @@
 import { http, createConfig } from "wagmi";
 import { localhost } from "wagmi/chains";
-import { injected } from "wagmi/connectors";
+import { injected, metaMask } from "wagmi/connectors";
 import { defineChain } from "viem";
 
 // Define Monad Testnet
@@ -27,10 +27,20 @@ export const monadTestnet = defineChain({
 });
 
 export const config = createConfig({
-  chains: [localhost, monadTestnet],
-  connectors: [injected()],
+  chains: [monadTestnet, localhost],
+  connectors: [
+    metaMask({
+      dappMetadata: {
+        name: "Clapo Game",
+        url: typeof window !== "undefined" ? window.location.origin : "",
+      },
+    }),
+    injected({
+      shimDisconnect: true,
+    }),
+  ],
   transports: {
     [localhost.id]: http(),
-    [monadTestnet.id]: http(),
+    [monadTestnet.id]: http("https://testnet-rpc.monad.xyz"),
   },
 });

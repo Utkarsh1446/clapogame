@@ -122,12 +122,23 @@ export default function Home() {
           <p className="text-gray-400 mb-8 max-w-md mx-auto">
             Head-to-head NFT prediction duels powered by Pyth price feeds
           </p>
-          <button
-            onClick={() => connect({ connector: connectors[0] })}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105"
-          >
-            Connect Wallet
-          </button>
+
+          {/* Show all available connectors */}
+          <div className="space-y-4">
+            {connectors.map((connector) => (
+              <button
+                key={connector.id}
+                onClick={() => connect({ connector })}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 block mx-auto"
+              >
+                Connect {connector.name}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-gray-500 text-sm mt-4">
+            Make sure you&apos;re connected to Monad Testnet
+          </p>
         </div>
       </div>
     );
